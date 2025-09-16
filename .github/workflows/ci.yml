@@ -1,18 +1,18 @@
 name: CI
 
-on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+on: [push, pull_request]
+
+permissions:
+  contents: write  # autorise la création de PR
 
 jobs:
-  lint:
+  lint-and-format:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # nécessaire pour créer une PR propre
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -23,17 +23,19 @@ jobs:
         run: |
           pip install black flake8
 
-      - name: Run Black (auto format)
-        run: |
-          black .
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add .
-            git commit -m "style: auto-format with Black"
-            git push
-          fi
+      - name: Run Flake8
+        run: flake8 .
 
-      - name: Run Flake8 (linting)
-        run: |
-          flake8 . --max-line-length=88 --exclude=.git,__pycache__,venv
+      - name: Run Black
+        run: black .
+
+      - name: Create Pull Request with Black fixes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "style: auto-format with Black"
+          branch: black-fixes
+          title: "style: auto-format with Black"
+          body: |
+            This PR applies automatic code formatting using **Black**.
+            Please review and merge if all tests pass.
+          labels: formatting, automated-pr

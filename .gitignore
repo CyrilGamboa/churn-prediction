@@ -1,0 +1,40 @@
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+
+# === Environnements ===
+.env
+.venv/
+venv/
+ENV/
+env.bak/
+
+# === Jupyter notebooks checkpoints ===
+.ipynb_checkpoints
+
+# === VSCode / IDE ===
+.vscode/
+.idea/
+
+# === Data ===
+*.csv
+*.parquet
+*.xls*
+*.h5
+
+# === Models ===
+app/model/*.pkl
+app/model/*.joblib
+app/model/*.csv
+
+# === Docker ===
+*.pid
+*.sock
+
+# === Old folders (à ignorer) ===
+Old/
+dashboard/Old/

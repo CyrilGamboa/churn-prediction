@@ -1,0 +1,34 @@
+networks:
+  churn_net:   # Réseau dédié au projet
+    driver: bridge
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: churn-api
+    volumes:
+      - ./app/model:/app/model
+    ports:
+      - "8001:8000"   # host:container
+    networks:
+      - churn_net
+    restart: always
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: churn-dashboard
+    volumes:
+      - ./app/model:/app/model
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    environment:
+      - API_URL=http://api:8000  # API accessible via le réseau Docker interne
+    networks:
+      - churn_net
+    restart: always

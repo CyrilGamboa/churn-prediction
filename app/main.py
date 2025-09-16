@@ -10,15 +10,16 @@ from sklearn.metrics import classification_report, average_precision_score
 
 # Config logs
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("churn_api")
 
 # Chargement du modèle
 MODEL_PATH = "app/model/xgb_churn_pipeline.pkl"
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Modèle introuvable : {MODEL_PATH}. Exécutez train.py au préalable.")
+    raise FileNotFoundError(
+        f"Modèle introuvable : {MODEL_PATH}. Exécutez train.py au préalable."
+    )
 model = joblib.load(MODEL_PATH)
 logger.info("✅ Modèle chargé avec succès")
 
@@ -32,6 +33,7 @@ try:
 except Exception:
     df_test, X_test, y_test = None, None, None
     logger.warning("⚠️ Aucun jeu de test trouvé pour /metrics")
+
 
 # Schéma d'entrée
 class CustomerFeatures(BaseModel):
@@ -55,8 +57,10 @@ class CustomerFeatures(BaseModel):
     MonthlyCharges: float
     TotalCharges: float
 
+
 # Création de l'app
 app = FastAPI(default_response_class=ORJSONResponse)
+
 
 # Middleware pour loguer la latence
 @app.middleware("http")
@@ -64,29 +68,52 @@ async def log_latency(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     duration = (time.perf_counter() - start) * 1000
-    logger.info(f"{request.method} {request.url.path} - {duration:.2f} ms - status {response.status_code}")
+    logger.info(
+        f"{request.method} {request.url.path} - {duration:.2f} ms - status {response.status_code}"
+    )
     return response
+
 
 # Warm-up
 @app.on_event("startup")
 def warmup():
-    sample = pd.DataFrame([{
-        "gender": "Male", "SeniorCitizen": 0, "Partner": "Yes", "Dependents": "No", "tenure": 1,
-        "PhoneService": "Yes", "MultipleLines": "No", "InternetService": "DSL", "OnlineSecurity": "No",
-        "OnlineBackup": "No", "DeviceProtection": "No", "TechSupport": "No", "StreamingTV": "No",
-        "StreamingMovies": "No", "Contract": "Month-to-month", "PaperlessBilling": "Yes",
-        "PaymentMethod": "Electronic check", "MonthlyCharges": 50.0, "TotalCharges": 50.0
-    }])
+    sample = pd.DataFrame(
+        [
+            {
+                "gender": "Male",
+                "SeniorCitizen": 0,
+                "Partner": "Yes",
+                "Dependents": "No",
+                "tenure": 1,
+                "PhoneService": "Yes",
+                "MultipleLines": "No",
+                "InternetService": "DSL",
+                "OnlineSecurity": "No",
+                "OnlineBackup": "No",
+                "DeviceProtection": "No",
+                "TechSupport": "No",
+                "StreamingTV": "No",
+                "StreamingMovies": "No",
+                "Contract": "Month-to-month",
+                "PaperlessBilling": "Yes",
+                "PaymentMethod": "Electronic check",
+                "MonthlyCharges": 50.0,
+                "TotalCharges": 50.0,
+            }
+        ]
+    )
     try:
         _ = model.predict_proba(sample)
         logger.info("Warm-up terminé")
     except Exception as e:
         logger.error(f"Warm-up échoué : {e}")
 
+
 # Endpoint santé
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
 
 # Endpoint prédiction
 @app.post("/predict")
@@ -96,14 +123,17 @@ def predict(features: CustomerFeatures, threshold: float = Query(0.40, ge=0.0, l
     return {
         "churn": bool(prob >= threshold),
         "probability": round(prob, 3),
-        "threshold": threshold
+        "threshold": threshold,
     }
+
 
 # Endpoint métriques globales
 @app.get("/metrics")
 def metrics(threshold: float = Query(0.40, ge=0.0, le=1.0)):
     if X_test is None or y_test is None:
-        return {"error": "Aucun jeu de test n'est disponible pour calculer les métriques."}
+        return {
+            "error": "Aucun jeu de test n'est disponible pour calculer les métriques."
+        }
 
     y_proba = model.predict_proba(X_test)[:, 1]
     y_pred = (y_proba >= threshold).astype(int)
@@ -117,8 +147,9 @@ def metrics(threshold: float = Query(0.40, ge=0.0, le=1.0)):
         "recall": round(float(report["1"]["recall"]), 3),
         "f1_score": round(float(report["1"]["f1-score"]), 3),
         "accuracy": round(float(report["accuracy"]), 3),
-        "pr_auc": round(float(pr_auc), 3)
+        "pr_auc": round(float(pr_auc), 3),
     }
+
 
 # Endpoint pour renvoyer toutes les probabilités du jeu de test
 @app.get("/predict_proba_all")
@@ -132,4 +163,3 @@ def predict_proba_all():
         return y_proba.tolist()  # conversion en liste pour JSON
     except Exception as e:
         return {"error": str(e)}
-

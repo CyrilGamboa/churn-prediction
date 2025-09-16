@@ -1,0 +1,46 @@
+name: CI - Lint & Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupérer le code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Installer Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # 3. Installer dépendances
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black flake8
+
+      # 4. Vérifier la conformité PEP8 avec flake8
+      - name: Run flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+
+      # 5. Vérifier la mise en forme avec black
+      - name: Check formatting with Black
+        run: black --check .
+
+      # (optionnel) 6. Lancer les tests unitaires si tu en as
+      - name: Run tests
+        run: |
+          if [ -d "tests" ]; then pytest tests; fi

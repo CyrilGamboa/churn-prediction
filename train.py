@@ -15,7 +15,7 @@ import kagglehub
 path = kagglehub.dataset_download("blastchar/telco-customer-churn")
 
 # === 1. Chargement des données ===
-#df = pd.read_csv("telco_churn.csv")  # !! a adapter selon le chemin du fichier
+# df = pd.read_csv("telco_churn.csv")  # !! a adapter selon le chemin du fichier
 df = pd.read_csv(f"{path}/WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
 # Nettoyage
@@ -29,9 +29,21 @@ df["Churn"] = df["Churn"].map({"Yes": 1, "No": 0})
 # Features
 num_features = ["SeniorCitizen", "tenure", "MonthlyCharges", "TotalCharges"]
 cat_features = [
-    "gender", "Partner", "Dependents", "PhoneService", "MultipleLines",
-    "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
-    "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling", "PaymentMethod"
+    "gender",
+    "Partner",
+    "Dependents",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod",
 ]
 
 X = df[num_features + cat_features]
@@ -49,20 +61,24 @@ scale_pos_weight = y_train.value_counts()[0] / y_train.value_counts()[1]
 num_transformer = StandardScaler()
 cat_transformer = OneHotEncoder(handle_unknown="ignore")
 
-preprocessor = ColumnTransformer([
-    ("num", num_transformer, num_features),
-    ("cat", cat_transformer, cat_features)
-])
+preprocessor = ColumnTransformer(
+    [("num", num_transformer, num_features), ("cat", cat_transformer, cat_features)]
+)
 
-pipeline = Pipeline(steps=[
-    ("preprocessor", preprocessor),
-    ("classifier", XGBClassifier(
-        eval_metric="logloss",
-        random_state=42,
-        scale_pos_weight=scale_pos_weight,
-        use_label_encoder=False
-    ))
-])
+pipeline = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        (
+            "classifier",
+            XGBClassifier(
+                eval_metric="logloss",
+                random_state=42,
+                scale_pos_weight=scale_pos_weight,
+                use_label_encoder=False,
+            ),
+        ),
+    ]
+)
 
 # === 4. Optimisation (GridSearch) ===
 param_grid = {
@@ -72,17 +88,10 @@ param_grid = {
     "classifier__subsample": [0.7, 1.0],
     "classifier__colsample_bytree": [0.8, 1.0],
     "classifier__min_child_weight": [1, 5],
-    "classifier__gamma": [0, 1]
+    "classifier__gamma": [0, 1],
 }
 
-grid = GridSearchCV(
-    pipeline,
-    param_grid,
-    cv=5,
-    scoring="recall",
-    n_jobs=-1,
-    verbose=2
-)
+grid = GridSearchCV(pipeline, param_grid, cv=5, scoring="recall", n_jobs=-1, verbose=2)
 
 grid.fit(X_train, y_train)
 
@@ -97,16 +106,14 @@ print(classification_report(y_test, y_pred))
 print("Confusion matrix:\n", confusion_matrix(y_test, y_pred))
 
 
-
 # === Sauvegarde des importances des features ===
 importances_path = "app/model/feature_importances.csv"
 
 # Récupération des noms des features après préprocessing
-feature_names = (
-    num_features +
-    list(best_model.named_steps["preprocessor"]
-         .named_transformers_["cat"]
-         .get_feature_names_out(cat_features))
+feature_names = num_features + list(
+    best_model.named_steps["preprocessor"]
+    .named_transformers_["cat"]
+    .get_feature_names_out(cat_features)
 )
 
 # Récupération des importances depuis XGBoost
@@ -114,17 +121,12 @@ xgb_model = best_model.named_steps["classifier"]
 importances = xgb_model.feature_importances_
 
 # Sauvegarde dans un CSV
-importances_df = pd.DataFrame({
-    "feature": feature_names,
-    "importance": importances
-}).sort_values(by="importance", ascending=False)
+importances_df = pd.DataFrame(
+    {"feature": feature_names, "importance": importances}
+).sort_values(by="importance", ascending=False)
 
 importances_df.to_csv(importances_path, index=False)
 print(f"Importances sauvegardées dans {importances_path}")
-
-
-
-
 
 
 # === 6. Sauvegardes ===

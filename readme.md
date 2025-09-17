@@ -123,3 +123,10 @@ curl -X POST "http://localhost:8001/predict?threshold=0.4" \
 - 📈 Monitoring du modèle (drift, métriques en continu).  
 - ☁️ Déploiement sur cloud (AWS/GCP/Azure).  
 
+## 🧾 Auteur
+
+**CyrilGamboa**  
+[Github : https://github.com/CyrilGamboa ](#)
+
+---
+
